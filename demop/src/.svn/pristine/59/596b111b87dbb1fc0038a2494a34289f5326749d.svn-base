@@ -1,0 +1,294 @@
+package com.en.adback.controller;
+
+import com.alibaba.fastjson.JSON;
+import com.en.adback.entity.Logs;
+import com.en.adback.entity.advertmgr.AdvertPutIn;
+import com.en.adback.entity.devicemgr.AllDevice;
+import io.swagger.models.auth.In;
+import org.apache.poi.hssf.usermodel.*;
+import org.apache.poi.hssf.util.HSSFColor;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.util.CellRangeAddress;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+public class MakeExcelCtrl {
+
+    //将数据写入表格里   日志表
+    public void writeLogExcel(List<Logs> logsList) throws IOException {
+        Resource resource=new ClassPathResource("/static/excels/日志信息.xls");
+        File file=resource.getFile();
+        HSSFWorkbook wb=new HSSFWorkbook(new FileInputStream(file));
+        HSSFSheet sheet=wb.getSheetAt(0);
+        sheet.setDefaultColumnWidth(15);
+        int rowCount=1;
+        for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+            sheet.removeRow(sheet.getRow(i));
+        }
+
+        //创建表头单元格样式 以及表头的字体样式
+        HSSFCellStyle style = wb.createCellStyle();
+        style.setWrapText(true);// 设置自动换行
+        style.setAlignment(HSSFCellStyle.ALIGN_CENTER);
+        style.setVerticalAlignment(HSSFCellStyle.VERTICAL_CENTER); // 创建一个居中格式
+        style.setFillPattern(HSSFCellStyle.SOLID_FOREGROUND);
+        style.setFillBackgroundColor(HSSFColor.WHITE.index);//设置背景色
+        style.setFillForegroundColor(HSSFColor.WHITE.index);//设置前景色
+        style.setBottomBorderColor(HSSFColor.BLACK.index);
+        style.setBorderBottom(HSSFCellStyle.BORDER_THIN);
+        style.setBorderLeft(HSSFCellStyle.BORDER_THIN);
+        style.setBorderRight(HSSFCellStyle.BORDER_THIN);
+        style.setBorderTop(HSSFCellStyle.BORDER_THIN);
+        HSSFFont headerFont = (HSSFFont) wb.createFont(); // 创建字体样式
+        headerFont.setFontName("宋体"); // 设置字体类型
+        headerFont.setFontHeightInPoints((short) 12); // 设置字体大小
+        headerFont.setColor(HSSFColor.BLACK.index);  //设置字体颜色
+        style.setFont(headerFont); // 为标题样式设置字体样式
+
+        //将信息写入表中
+        for (Logs log:logsList){
+            HSSFRow row=sheet.createRow(rowCount);
+
+            Cell cellUserId = row.createCell(0); // 创建指定单元格对象。如本身有数据会替换掉
+            cellUserId.setCellValue(log.getUserId()); // 人员编号
+            cellUserId.setCellStyle(style);
+
+            Cell cellGroupRoleName = row.createCell(1);
+            cellGroupRoleName.setCellValue(log.getGroupRoleName()); // 账户所属分组id
+            cellGroupRoleName.setCellStyle(style);
+
+            Cell cellRoleName = row.createCell(2);
+            cellRoleName.setCellValue(log.getRoleName()); // 角色
+            cellRoleName.setCellStyle(style);
+
+            Cell cellIp = row.createCell(3);
+            cellIp.setCellValue(log.getIp()); // ip
+            cellIp.setCellStyle(style);
+
+            Cell cellLogContent = row.createCell(4);
+            cellLogContent.setCellValue(log.getLogContent()); // 日志内容
+            cellLogContent.setCellStyle(style);
+
+            Cell cellActionTime = row.createCell(5);
+            cellActionTime.setCellValue(log.getActionTime()); // 操作日期
+            cellActionTime.setCellStyle(style);
+
+            rowCount++;
+        }
+        FileOutputStream os=new FileOutputStream(file);
+        wb.write(os);
+    }
+
+
+    public void writeAdvertPutinExcel(Map<String, Object> map, HttpServletRequest request) throws IOException {
+        AdvertPutIn advert= JSON.parseObject(map.get("advertPutin").toString(),AdvertPutIn.class);
+        List<AdvertPutIn> linkAdvertList= Arrays.stream(JSON.parseObject(map.get("linkAdvertList").toString(), AdvertPutIn[].class)).collect(Collectors.toList());
+        List<AllDevice> deviceList= Arrays.stream(JSON.parseObject(map.get("deviceList").toString(), AllDevice[].class)).collect(Collectors.toList());
+        String playDaysArray[]=JSON.parseObject(map.get("playDaysArray").toString(),String[].class);
+
+        Resource resource=new ClassPathResource("/static/excels/广告分发信息.xls");
+        File file=resource.getFile();
+        HSSFWorkbook wb=new HSSFWorkbook(new FileInputStream(file));
+        HSSFSheet sheet=wb.getSheetAt(0);
+        for (int i = 0; i <= sheet.getLastRowNum(); i++) {
+            sheet.removeRow(sheet.getRow(i));
+        }
+        //创建第一行（标题）
+        HSSFRow titlerow=sheet.createRow(0);
+        Cell titlecell=titlerow.createCell(0);
+        titlecell.setCellValue(advert.getAdvertId()+'\t'+advert.getAdvertName());
+        //创建第二行
+        HSSFRow typeRow=sheet.createRow(1);
+        Cell typeTitle=typeRow.createCell(0);
+        typeTitle.setCellValue("投放类别");
+        Cell typeValue=typeRow.createCell(1);
+        if(Integer.parseInt(advert.getPutInKind())==1){
+            typeValue.setCellValue("购买");
+        }else if(Integer.parseInt(advert.getPutInKind())==2){
+            typeValue.setCellValue("赠送");
+        }
+        //创建第三行
+        HSSFRow playDayRow=sheet.createRow(2);
+        Cell total=playDayRow.createCell(1);
+        total.setCellValue("全部天数（"+playDaysArray[0]+")");
+
+        //获取播放日期数据
+        for (int i = 0; i < playDaysArray.length; i++) {
+            HSSFRow dayrow=sheet.getRow(i+2);
+            if (dayrow==null){
+                dayrow=sheet.createRow(i+2);
+            }
+            Cell monthcell=dayrow.getCell(2);
+            monthcell.setCellValue(playDaysArray[i]+"年"+playDaysArray[i]+"月");
+            Cell daycell=dayrow.getCell(3);
+            daycell.setCellValue(playDaysArray[i]);
+        }
+        //获取广告策略数据
+        HSSFRow advertrow=sheet.createRow(2+playDaysArray.length);
+        Cell playtypecell=advertrow.createCell(0);
+        playtypecell.setCellValue("播放形式");
+        Cell playtypeValue=advertrow.createCell(1);
+        if (advert.getPlayAlone()==1) {
+            playtypeValue.setCellValue("轮播");
+        }else if(advert.getPlayAlone()==2){
+            playtypeValue.setCellValue("独播");
+        }else{
+            playtypeValue.setCellValue("");
+        }
+        Cell policycell=advertrow.createCell(2);
+        policycell.setCellValue("播放策略");
+        Cell policyvalue=advertrow.createCell(3);
+        policyvalue.setCellValue(advert.getPolicyName());
+        Cell screencell=advertrow.createCell(4);
+        screencell.setCellValue("屏幕模式");  //播放屏幕
+        Cell screenvalue=advertrow.createCell(5);
+        screenvalue.setCellValue(advert.getScreen());
+        Cell positioncell=advertrow.createCell(6);
+        positioncell.setCellValue("位置");  //播放屏幕
+        Cell positionvalue=advertrow.createCell(7);
+        if (advert.getScreenPosition()=="up"){
+            positionvalue.setCellValue("上屏");
+        }else if (advert.getScreenPosition()=="mid"){
+            policyvalue.setCellValue("中屏");
+        }else if(advert.getScreenPosition()=="down"){
+            policyvalue.setCellValue("下屏");
+        }else{
+            policyvalue.setCellValue("");
+        }
+        //生成关联广告表头
+        HSSFRow linkadverttitlerow=sheet.createRow(3+playDaysArray.length);
+        String linkAdvertTitle[]={"广告编号","广告策略","广告屏幕模式","广告位置"};
+        for (int i = 0; i < linkAdvertTitle.length; i++) {
+            Cell title=linkadverttitlerow.createCell(i);
+            title.setCellValue(linkAdvertTitle[i].toString());
+        }
+        //获取关联广告
+        for (int i = 0; i < linkAdvertList.size(); i++) {
+            HSSFRow linkadvertrow=sheet.createRow(4+playDaysArray.length);
+            Cell codecell=linkadvertrow.createCell(0);            //  广告编号
+            codecell.setCellValue(linkAdvertList.get(i).getAdvertId());
+
+        }
+
+
+        //合并单元格
+        sheet.addMergedRegion(new CellRangeAddress(2, playDaysArray.length+2, 1, 1));
+
+
+
+
+
+    }
+
+    public void writePutinQueryExcel(List<Map<String, Object>> dataList){
+        List<String> title=new ArrayList<String>();
+        //获取表头数据
+        title.add("设备编号");
+        title.add("场所名称");
+        title.add("播放形式");
+        title.add("播放策略");
+        title.add("策略详情");
+        title.add("屏幕模式");
+        title.add("位置");
+        if(dataList.get(0).get("d1")!=null){ title.add("d1"); }; if(dataList.get(0).get("d2")!=null){ title.add("d2"); }
+        if(dataList.get(0).get("d3")!=null){ title.add("d3"); }; if(dataList.get(0).get("d4")!=null){ title.add("d4"); }
+        if(dataList.get(0).get("d5")!=null){ title.add("d5"); }; if(dataList.get(0).get("d6")!=null){ title.add("d6"); }
+        if(dataList.get(0).get("d7")!=null){ title.add("d7"); }; if(dataList.get(0).get("d8")!=null){ title.add("d8"); }
+        if(dataList.get(0).get("d9")!=null){ title.add("d9"); }; if(dataList.get(0).get("d10")!=null){ title.add("d10"); }
+        if(dataList.get(0).get("d11")!=null){ title.add("d11"); }; if(dataList.get(0).get("d12")!=null){ title.add("d12"); }
+        if(dataList.get(0).get("d13")!=null){ title.add("d13"); }; if(dataList.get(0).get("d14")!=null){ title.add("d14"); }
+        if(dataList.get(0).get("d15")!=null){ title.add("d15"); }; if(dataList.get(0).get("d16")!=null){ title.add("d16"); }
+        if(dataList.get(0).get("d17")!=null){ title.add("d17"); }; if(dataList.get(0).get("d18")!=null){ title.add("d18"); }
+        if(dataList.get(0).get("d19")!=null){ title.add("d19"); }; if(dataList.get(0).get("d20")!=null){ title.add("d20"); }
+        if(dataList.get(0).get("d21")!=null){ title.add("d21"); }; if(dataList.get(0).get("d22")!=null){ title.add("d22"); }
+        if(dataList.get(0).get("d23")!=null){ title.add("d23"); }; if(dataList.get(0).get("d24")!=null){ title.add("d24"); }
+        if(dataList.get(0).get("d25")!=null){ title.add("d25"); }; if(dataList.get(0).get("d26")!=null){ title.add("d26"); }
+        if(dataList.get(0).get("d27")!=null){ title.add("d27"); }; if(dataList.get(0).get("d28")!=null){ title.add("d28"); }
+        if(dataList.get(0).get("d29")!=null){ title.add("d29"); }; if(dataList.get(0).get("d30")!=null){ title.add("d30"); }
+        if(dataList.get(0).get("d31")!=null){ title.add("d31"); };
+        //获取写入的文件
+        Resource resource=new ClassPathResource("static/excels/播放点位信息.xls");
+        File file= null;
+        FileOutputStream os=null;
+        try {
+            file = resource.getFile();
+
+            HSSFWorkbook wb=new HSSFWorkbook(new FileInputStream(file));
+
+            //将表数据清空，确保里面没有值
+            HSSFSheet sheet=wb.getSheetAt(0);
+            if (sheet.getLastRowNum()>0){
+                for (int i = 0; i <= sheet.getLastRowNum(); i++) {
+                    if (sheet.getRow(i)!=null){
+                        sheet.removeRow(sheet.getRow(i));
+                    }
+                }
+            }
+            //生成表数据
+            //第一行 表头
+            HSSFRow titleRow=sheet.createRow(0);
+            for (int i = 0; i < title.size(); i++) {
+                Cell titleCell=titleRow.createCell(i);
+                titleCell.setCellValue(title.get(i).toString());
+            }
+            // 第2行播放点位设备信息
+            for (int i = 0; i <dataList.size() ; i++) {
+                HSSFRow row=sheet.createRow(i+1);
+                Cell deviceIdCell=row.createCell(0);
+                deviceIdCell.setCellValue(dataList.get(i).get("deviceId").toString()); // 设备编号
+                Cell placeNameCell=row.createCell(1);
+                placeNameCell.setCellValue(dataList.get(i).get("enterpriseName").toString()); // 场所名称
+                Cell playTypeCell=row.createCell(2);
+                if (Integer.parseInt(dataList.get(i).get("playAlone").toString())==1){
+                    playTypeCell.setCellValue("轮播");
+                }else if(Integer.parseInt(dataList.get(i).get("playAlone").toString())==2){
+                    playTypeCell.setCellValue("独播");
+                }else{
+                    playTypeCell.setCellValue("");
+                }   // 播放形式
+                Cell playPolicyCell=row.createCell(3);
+                playPolicyCell.setCellValue(dataList.get(i).get("screenPolicyName").toString()); // 播放策略
+                Cell policyDetailCell=row.createCell(4);
+                policyDetailCell.setCellValue(dataList.get(i).get("detail").toString()); // 策略详情
+                Cell screenCell=row.createCell(5);
+                screenCell.setCellValue(dataList.get(i).get("screenCutName").toString()); // 屏幕模式
+                Cell positionCell=row.createCell(6);
+                if ("up".equals(dataList.get(i).get("position").toString())) {
+                    positionCell.setCellValue("上屏");
+                }else if ("mid".equals(dataList.get(i).get("position").toString())) {
+                    positionCell.setCellValue("中屏");
+                }else if("down".equals(dataList.get(i).get("position").toString())){
+                    positionCell.setCellValue("下屏");
+                }else{
+                    positionCell.setCellValue("");
+                } // 屏幕位置
+                for (int j = 7; j < title.size(); j++) {
+                    Cell cell=row.createCell(j);
+                    cell.setCellValue(Integer.parseInt(dataList.get(i).get(title.get(j)).toString()));
+                }
+                os=new FileOutputStream(file);
+                wb.write(os);
+                os.flush();
+                os.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }finally {
+            try {
+                os.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}

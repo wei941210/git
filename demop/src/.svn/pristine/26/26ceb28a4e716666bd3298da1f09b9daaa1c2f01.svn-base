@@ -1,0 +1,114 @@
+package com.en.adback.mapper.analisys;
+
+import com.en.adback.entity.devicemgr.DeviceGroup;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Select;
+
+import java.util.List;
+import java.util.Map;
+
+@Mapper
+public interface PutinPointCountMapper {
+    @Select("<script>" +
+            "select " +
+            "sum(case month(a.playTime) when 1 then 1 else 0 end) as InJanuary , " +
+            "sum(case month(a.playTime) when 2 then 1 else 0 end) as InFebruary, " +
+            "sum(case month(a.playTime) when 3 then 1 else 0 end) as InMarch, " +
+            "sum(case month(a.playTime) when 4 then 1 else 0 end) as April, " +
+            "sum(case month(a.playTime) when 5 then 1 else 0 end) as InMay, "+
+            "sum(case month(a.playTime) when 6 then 1 else 0 end) as InJune, "+
+            "sum(case month(a.playTime) when 7 then 1 else 0 end) as July, "+
+            "sum(case month(a.playTime) when 8 then 1 else 0 end) as August, "+
+            "sum(case month(a.playTime) when 9 then 1 else 0 end) as September, "+
+            "sum(case month(a.playTime) when 10 then 1 else 0 end) as October, "+
+            "sum(case month(a.playTime) when 11 then 1 else 0 end) as November, "+
+            "sum(case month(a.playTime) when 12 then 1 else 0 end) as December, "+
+            "e.policyName as policyName "+
+            "from ad.t_advert_play_rec a inner join ad.t_advert_media b on a.fileName = b.fileName "+
+            "inner join ad.t_sub_advert_policys c on b.advertId = c.advertId  "+
+            "inner join ad.t_advert_policys d on c.advertPolicysId = d.advertPolicysId "+
+            "inner join ad.t_play_policy_screen e on e.screenpolicyId = d.screenpolicyId "+
+            "where year(a.playTime) = ${year} " +
+            "group by e.policyName " +
+            "</script>")
+    public List<Map<String,Object>> PutinPointCount(Map<String, Object> map);
+
+
+
+    // 获取 各点位 统计
+    @Select("<script>" +
+            "select " +
+            "e.policyName as policyName, " +
+            "count(*) as strategyCount " +
+            "from ad.t_advert_play_rec a  " +
+            "inner join ad.t_advert_media b on a.fileName = b.fileName  "+
+            "inner join ad.t_sub_advert_policys c on b.advertId = c.advertId "+
+            "inner join ad.t_advert_policys d on c.advertPolicysId = d.advertPolicysId "+
+            "inner join ad.t_play_policy_screen e on e.screenpolicyId = d.screenpolicyId  "+
+            "where year(a.playTime) = ${year} group by e.policyName order by strategyCount desc "+
+            "</script>")
+    public List<Map<String,Object>> getPointStatistics(Map<String, Object> map);
+
+
+
+
+    // 获取 定向投放 统计
+    @Select("<script>" +
+            "select e.policyName as policyName, count(*) as strategyCount  " +
+            "from ad.t_advert a  " +
+            "inner join ad.t_sub_advert_policys b on b.advertId = a.advertId " +
+            "inner join ad.t_advert_policys d on d.advertPolicysId = b.advertPolicysId  " +
+            "inner join ad.t_play_policy_screen e on e.screenpolicyId = d.screenpolicyId  "+
+            "where year(a.uploadTime) = ${year} and policyName like '%定向投放%' group by e.policyName order by strategyCount desc "+
+            "</script>")
+    public List<Map<String,Object>> getOrientationOnTheArray(Map<String, Object> map);
+
+
+
+    // 获取 开屏广告 统计
+    @Select("<script>" +
+            "select e.policyName as policyName, count(*) as strategyCount  " +
+            "from ad.t_advert a  " +
+            "inner join ad.t_sub_advert_policys b on b.advertId = a.advertId " +
+            "inner join ad.t_advert_policys d on d.advertPolicysId = b.advertPolicysId  " +
+            "inner join ad.t_play_policy_screen e on e.screenpolicyId = d.screenpolicyId  "+
+            "where year(a.uploadTime) = ${year} and policyName like '%开屏%' group by e.policyName order by strategyCount desc "+
+            "</script>")
+    public List<Map<String,Object>> getTheTailArray(Map<String, Object> map);
+
+
+    // 获取 全屏广告 统计
+    @Select("<script>" +
+            "select e.policyName as policyName, count(*) as strategyCount  " +
+            "from ad.t_advert a  " +
+            "inner join ad.t_sub_advert_policys b on b.advertId = a.advertId " +
+            "inner join ad.t_advert_policys d on d.advertPolicysId = b.advertPolicysId  " +
+            "inner join ad.t_play_policy_screen e on e.screenpolicyId = d.screenpolicyId  "+
+            "where year(a.uploadTime) = ${year} and policyName like '%全屏%' group by e.policyName order by strategyCount desc "+
+            "</script>")
+    public List<Map<String,Object>> getFullScreenArray(Map<String, Object> map);
+
+    // 获取 插播广告 统计
+    @Select("<script>" +
+            "select e.policyName as policyName, count(*) as strategyCount  " +
+            "from ad.t_advert a  " +
+            "inner join ad.t_sub_advert_policys b on b.advertId = a.advertId " +
+            "inner join ad.t_advert_policys d on d.advertPolicysId = b.advertPolicysId  " +
+            "inner join ad.t_play_policy_screen e on e.screenpolicyId = d.screenpolicyId  "+
+            "where year(a.uploadTime) = ${year} and policyName like '%插播%' group by e.policyName order by strategyCount desc "+
+            "</script>")
+    public List<Map<String,Object>> getCallWaitingArray(Map<String, Object> map);
+
+    // 获取 定向轮播 统计
+    @Select("<script>" +
+            "select e.policyName as policyName, count(*) as strategyCount  " +
+            "from ad.t_advert a  " +
+            "inner join ad.t_sub_advert_policys b on b.advertId = a.advertId " +
+            "inner join ad.t_advert_policys d on d.advertPolicysId = b.advertPolicysId  " +
+            "inner join ad.t_play_policy_screen e on e.screenpolicyId = d.screenpolicyId  "+
+            "where year(a.uploadTime) = ${year} and policyName like '%定向轮播%' group by e.policyName order by strategyCount desc "+
+            "</script>")
+    public List<Map<String,Object>> getCirectedByArray(Map<String, Object> map);
+
+
+}

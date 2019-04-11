@@ -1,0 +1,331 @@
+package com.en.adback.serviceimp.adreplace;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.serializer.SerializerFeature;
+import com.en.adback.entity.adreplace.AdReplaceInParams;
+import com.en.adback.entity.adreplace.BusinessEnum;
+import com.en.adback.entity.adreplace.ResponseModel;
+import com.en.adback.mapper.AdReplace.AdReplaceMapper;
+import com.en.adback.service.Adreplace.IAdreplaceService;
+import com.en.adback.websocket.WsSessionManager;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.ibatis.annotations.Param;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.util.StringUtils;
+import org.springframework.web.client.RestTemplate;
+
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
+import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+/**
+ * @author ysh
+ * @created 20190122
+ * @desc 文件上传下发的实现
+ */
+@Slf4j
+@Service
+public class AdreplaceServiceImpl  implements IAdreplaceService {
+
+    @Value("${advertfiles}")
+    private String advertFiles;
+
+
+    @Value("${api.replace.upload.path}")
+    private String fileHostUploadPath;
+
+
+    @Autowired
+    private RestTemplate restTemplate;
+
+    @Autowired
+    private AdReplaceMapper adReplaceMapper;
+
+    @Autowired
+    @Qualifier("ThreadExecutor")
+    private ExecutorService threadExecutor;
+
+    /*提供从本服务器下载功能*/
+   @Override
+    public void downLoad(String fileName, HttpServletResponse response) throws IOException {
+        Path path = Paths.get(advertFiles+"media", fileName);
+        response.setContentType("application/octet-stream");
+        response.setHeader("Content-Disposition", "attachment; filename=" + new String(fileName.getBytes("utf-8"), "iso-8859-1"));
+        long readed = Files.copy(path, response.getOutputStream());
+
+    }
+
+    /*从本服务器上传到市州服务器*/
+    @Override
+    public ResponseModel upLoad(String targetUrl, String fileName, Boolean isAsync) {
+
+        Path filePath = Paths.get(advertFiles+"media", fileName);
+        log.info("开始上传->> url：{},fileName:{},filePath:{}",targetUrl,fileName,filePath);
+
+        if (StringUtils.isEmpty(fileName) || Files.notExists(filePath)){
+            ResponseModel model = ResponseModel.warp(BusinessEnum.UNEXIST).setData(fileName);
+            return model;
+        }
+        Boolean isexist = restTemplate.getForObject(targetUrl + "/isexist?fileName="+fileName, Boolean.class);
+        if (isexist){
+            ResponseModel model = ResponseModel.warp(BusinessEnum.EXISTED).setData(fileName);
+            return model;
+        }
+        FileSystemResource resource = new FileSystemResource(filePath);
+        MultiValueMap<String, Object> param = new LinkedMultiValueMap<>();
+        param.add("file", resource);
+        param.add("fileName", fileName);
+        param.add("isAsync", isAsync);
+        ResponseModel model = restTemplate.postForObject(targetUrl, param, ResponseModel.class);
+        log.info("上传结果->> {}",JSON.toJSONString(model));
+        return model;
+    }
+
+    @Async
+    @Override
+    public void upLoadAsync(String targetUrl, String fileName, Boolean isAsync) {
+        ResponseModel model = upLoad(targetUrl, fileName, isAsync);
+        this.asyncCallback(JSON.toJSONString(model));
+    }
+
+    /*从本服务器下发文件名，市州服务器自主从本服务器下载*/
+    @Override
+    public ResponseModel dispatch(String targetUrl, String fileName, Boolean isAsync){
+        log.info("开始下发：{}",fileName);
+        Path filePath = Paths.get(advertFiles+"media", fileName);
+        if (StringUtils.isEmpty(fileName) || Files.notExists(filePath)){
+            ResponseModel model = ResponseModel.warp(BusinessEnum.UNEXIST).setData(fileName);
+            return model;
+        }else{
+            MultiValueMap<String, Object> param = new LinkedMultiValueMap<>();
+            param.add("fileName", fileName);
+            param.add("isAsync", isAsync);
+            ResponseModel model = restTemplate.postForObject(targetUrl, param, ResponseModel.class);
+            return model;
+        }
+    }
+    @Async
+    @Override
+    public void dispatchAsync(String targetUrl, String fileName, Boolean isAsync){
+        ResponseModel model = dispatch(targetUrl, fileName, isAsync);
+        this.asyncCallback(JSON.toJSONString(model));
+    }
+
+
+
+
+    /*市州服务器上传或下载结果报告*/
+    @Override
+    public void asyncCallback(String callbackJson){
+
+        log.info("callback 收到的信息：{}",callbackJson);
+    }
+
+
+    /*--------------------------------------------------------------广告替换操作----------------------------------------------------------------------------*/
+
+    @Override
+    public void advertReplace(AdReplaceInParams adReplaceInParams){
+
+
+        System.out.println(JSON.toJSONString(adReplaceInParams, SerializerFeature.WriteMapNullValue,SerializerFeature.PrettyFormat));
+
+        //原策略Id
+        String sourceAdvertPolicyId = adReplaceInParams.getSourceAdvertPolicyId();
+        //新策略Id
+        String newAdvertPolicyId = adReplaceInParams.getAdvertPolicyId();
+
+
+        //整理要替换的信息
+        List<AdReplaceInParams.AdvertInfo> advertInfoList = adReplaceInParams.getAdverts();
+        advertInfoList.stream().forEach(info->{
+            String advertName = adReplaceMapper.getFileNameByAdvertId(info.getAdvertId());
+            info.setAdvertName(advertName);
+
+            Map<String, Object> subAdvertPolicys = adReplaceMapper.getSubAdvertPolicysByAdvertPolicysIdAndScreenCutId(sourceAdvertPolicyId, info.getScreenCutId());
+
+            if (!Objects.isNull(subAdvertPolicys)){
+                String advertId = String.valueOf(subAdvertPolicys.get("advertId"));
+                info.setSrcAdvertId(advertId);
+                String oldAdvertName= adReplaceMapper.getFileNameByAdvertId(advertId);
+                info.setSrcAdvertName(oldAdvertName);
+            }else{
+                throw new RuntimeException("AdvertPolicyId+ScreenCutId不唯一！");
+            }
+        });
+
+        System.out.println(JSON.toJSONString(adReplaceInParams, SerializerFeature.WriteMapNullValue,SerializerFeature.PrettyFormat));
+
+        /*1. 备份原策略.*/
+        adReplaceMapper.advertPolicysBackup(sourceAdvertPolicyId);
+
+        //查出原策略
+        Map<String, String> advertPolicys = adReplaceMapper.getAdvertPolicysById(sourceAdvertPolicyId);
+        //克隆一份，用于传参
+        HashMap<String, Object> advertPolicysClone = new LinkedHashMap<>(advertPolicys);
+        // 需要替换的设备  ,devices为null 或 "" 为全部设备,否则为部分设备
+        String inputDevices = adReplaceInParams.getDevices();
+        String replaceDevices = StringUtils.isEmpty(inputDevices)?advertPolicys.get("devices"): inputDevices;
+
+        /*2. 根据devices 字段 ，判断 全部、部分替换*/
+        if (StringUtils.isEmpty(inputDevices)){
+
+            //日期分成两组,大于等于今天的，作为原策略保存，小于的作为新策略保存.
+            SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+            String curDate = format.format(new Date());
+            String sourcePlayDates = String.valueOf(advertPolicysClone.get("playDates"));
+            /* 今天(含)以前的 */
+            String  srcPlayDates = Arrays.stream(sourcePlayDates.split(",")).filter(palyDate -> palyDate.compareTo(curDate) <= 0).collect(Collectors.joining(","));
+            srcPlayDates = Objects.isNull(srcPlayDates)?"":srcPlayDates;
+
+            /* 今天(含)以后的 */
+            String  newPlayDates = Arrays.stream(sourcePlayDates.split(",")).filter(palyDate -> palyDate.compareTo(curDate) >= 0).collect(Collectors.joining(","));
+            newPlayDates=Objects.isNull(newPlayDates)?"":newPlayDates;
+
+            //更新原策略
+            advertPolicysClone.put("advertPolicysId",sourceAdvertPolicyId);
+            advertPolicysClone.put("playDates",srcPlayDates);
+            adReplaceMapper.upsertAdvertPolicys(advertPolicysClone);
+
+
+            //生成并插入新策略
+            advertPolicysClone.put("advertPolicysId",newAdvertPolicyId);
+            advertPolicysClone.put("playDates",newPlayDates);
+            advertPolicysClone.put("sourceId",sourceAdvertPolicyId);
+            adReplaceMapper.upsertAdvertPolicys(advertPolicysClone);
+
+
+
+        }else {
+            String sourceDevices = String.valueOf(advertPolicysClone.get("devices"));
+
+            LinkedList<String> sourceDeviceIdList = new LinkedList<>(Arrays.asList(sourceDevices.split(",")));
+            LinkedList<String> replaceDeviceIdList = new LinkedList<>(Arrays.asList(replaceDevices.split(",")));
+            sourceDeviceIdList.removeAll(replaceDeviceIdList);
+
+            String retainDevices = sourceDeviceIdList.stream().sorted().collect(Collectors.joining(","));
+
+
+            //更新原策略
+            advertPolicysClone.put("advertPolicysId", sourceAdvertPolicyId);
+            advertPolicysClone.put("devices", retainDevices);
+            adReplaceMapper.upsertAdvertPolicys(advertPolicysClone);
+
+
+            //保存新策略
+            advertPolicysClone.put("advertPolicysId", newAdvertPolicyId);
+            advertPolicysClone.put("devices", replaceDevices);
+            advertPolicysClone.put("sourceId", sourceAdvertPolicyId);
+            adReplaceMapper.upsertAdvertPolicys(advertPolicysClone);
+
+        }
+
+        advertInfoList.stream().forEach(info->{
+
+            Map<String, Object> paramMap = new HashMap<>();
+
+
+            //TODO 新策略插入 策略子表(只插入新生成策略)
+            paramMap.put("advertPolicysId",newAdvertPolicyId);
+            paramMap.put("advertId",info.getAdvertId());
+            paramMap.put("screenCutId",info.getScreenCutId());
+            adReplaceMapper.insertSubAdvertPolicys(paramMap);
+
+            paramMap.clear();
+
+
+            //TODO  插入广告历史表和广告表 新广告 nowstate->8
+            paramMap.put("advertId",info.getAdvertId());
+            paramMap.put("nowState",8);//8是替换状态
+            paramMap.put("maker",adReplaceInParams.getLoginUserId());
+            adReplaceMapper.updateAdvertState(paramMap);//更新
+            adReplaceMapper.insertAdvertHisState(paramMap); //新增
+
+            paramMap.clear();
+
+            //TODO  插入广告历史表和广告表 原广告 nowstate->9
+            paramMap.put("advertId",info.getSrcAdvertId());
+            paramMap.put("nowState",9);//9是被替换状态
+            paramMap.put("maker",adReplaceInParams.getLoginUserId());
+            adReplaceMapper.updateAdvertState(paramMap);//更新
+            adReplaceMapper.insertAdvertHisState(paramMap);//更新
+
+            paramMap.clear();
+
+            // TODO  修改每日播放策略文件表 ad.t_advert_day_policy_role,更新需替换设备对应的所有广告
+            paramMap.put("newFileName", info.getAdvertName());
+            paramMap.put("oldFileName",info.getSrcAdvertName());
+            String replaceDevicesStr = Arrays.stream(replaceDevices.split(",")).collect(Collectors.joining("','"));
+            paramMap.put("replaceDevices",replaceDevicesStr);
+            adReplaceMapper.updateDayPolicysRole(paramMap);
+
+        });
+
+//        String onlineReplaceDevices = WsSessionManager.getSessionMap().keySet().stream().filter(s -> Arrays.asList(replaceDevices.split(",")).contains(s)).collect(Collectors.joining(","));
+
+        //TODO  异步执行 通知APP 替换
+        this.cmdDevicesReplaceAsync(replaceDevices,advertInfoList);
+    }
+
+
+
+
+
+      /*异步执行 通知APP 进行替换*/
+    public void cmdDevicesReplaceAsync(String replaceDevices,List<AdReplaceInParams.AdvertInfo> advertInfoList ){
+        // TODO 异步执行
+        threadExecutor.execute(()->{
+            /*发送停止命令*/
+            List<Object> srcFileList = advertInfoList.stream().map(info -> info.getSrcAdvertName()).collect(Collectors.toList());
+
+
+            HashMap<String, Object> cmdStopMap = new HashMap<>();
+            cmdStopMap.put("action","stop");
+            cmdStopMap.put("data",srcFileList);
+            String stopCmd = JSON.toJSONString(cmdStopMap);
+            Arrays.stream(replaceDevices.split(",")).forEach(id-> WsSessionManager.sendActionByDeviceId(id,stopCmd));
+
+           /*上传广告到文件服务器*/
+            String replaceDevicesStr = Arrays.stream(replaceDevices.split(",")).collect(Collectors.joining("','"));
+            List<Map<String, String>> filehostAddressList = adReplaceMapper.getFilehostAddress(replaceDevicesStr);
+            filehostAddressList.stream().filter(map-> Pattern.matches("(http|https)://([\\w.:]+|[\\w.:]+/)", map.get("ip"))).forEach(map->{
+                String url = map.get("ip")+fileHostUploadPath;
+                /*测试使用 String url = "http://192.168.1.99:8008/api/replace/upload";*/
+                advertInfoList.parallelStream().forEach(info->{
+                    try {
+                        ResponseModel model = this.upLoad(url, info.getAdvertName(),false);
+                        log.info("=== 上传成功 ===：{}",model);
+                    } catch (Exception e) {
+                        log.error("=== 上传错误 ===,url:{}",url,e);
+                    }
+                });
+
+            });
+
+           /*发送替换命令 */
+            List<Object> newFileList = advertInfoList.stream().map(info -> info.getAdvertName()).collect(Collectors.toList());
+            HashMap<String, Object> cmdReplaceMap = new HashMap<>();
+            cmdReplaceMap.put("action","replace");
+            cmdReplaceMap.put("data",newFileList);
+            String replaceCmd = JSON.toJSONString(cmdReplaceMap);
+            Arrays.stream(replaceDevices.split(",")).forEach(id-> WsSessionManager.sendActionByDeviceId(id,replaceCmd));
+
+        });
+
+
+    }
+}

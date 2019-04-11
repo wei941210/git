@@ -1,0 +1,77 @@
+package com.en.adback.serviceimp.advertmgr;
+
+import com.en.adback.entity.calpolicy.AllDayPolicySub;
+import com.en.adback.entity.calpolicy.AllDevices;
+import com.en.adback.entity.sys.DefaultAdvert;
+import com.en.adback.mapper.advertmgr.IDevicePolicyMapper;
+import com.en.adback.service.advertmgr.IFilePutinCityHostService;
+import com.en.adback.serviceimp.sys.DefaultAdvertServiceImp;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+// 计算文件下发服务器策略
+@Service
+public class FilePutinCityHostServiceImp implements IFilePutinCityHostService {
+    @Autowired
+    private IDevicePolicyMapper mapper;
+    @Autowired
+    private DefaultAdvertServiceImp dsvr;
+    @Override
+    public void calFilePutin(String theDate) {
+        Map<String,Object> paras = new HashMap<String,Object>();
+        paras.put("theDate",theDate);
+        // 1. 取设备
+        List<AllDevices> devicesList =mapper.usedDeviceList();
+        String devices= devicesList.stream().map(AllDevices::getDeviceId).collect(Collectors.joining(","));
+        List<AllDayPolicySub> dayPolicySubList=mapper.dayPolicySubListfiledown(paras);
+
+        // 如果测略device字段为null 补全所有设备
+        dayPolicySubList.stream().filter(o-> o.getDevices()==null ||  o.getDevices().equals("")).collect(Collectors.toList()).forEach(
+                v ->{
+                    v.setDevices(devices);
+                }
+        );
+        for (AllDayPolicySub sub : dayPolicySubList){
+                List<String> cityids= devicesList.stream().filter( o -> sub.getDevices().contains( o.getDeviceId())).map(AllDevices::getCityId).distinct().collect(Collectors.toList());
+               for (String cityId : cityids)
+               {
+                   Map<String,Object> pa = new HashMap<String,Object>();
+                   pa.put("fileName",sub.getDownloadfilename());
+                   pa.put("cityId",cityId);
+                   pa.put("beginPlayTime",theDate);
+                   mapper.insertFilehost(pa);
+
+
+
+
+               }
+        }
+
+        // 默认广告生成
+        //1. 读取市州
+        String[] cityids={ "430100", "430200", "430300", "430400", "430500", "430600",
+                          "430700", "430800", "430900", "431000", "431100", "431200","431300", "433100"};
+        // 2. 读取默认广告名称
+        List<DefaultAdvert> list= dsvr.getDefaultAdvertList();
+
+        Arrays.stream(cityids).forEach(
+                cityid -> {
+                    for (DefaultAdvert advert : list){
+                        Map<String,Object> pa = new HashMap<String,Object>();
+                        pa.put("fileName",advert.getDefaultFileName());
+                        pa.put("cityId",cityid);
+                        pa.put("beginPlayTime",theDate);
+                        mapper.insertFilehost(pa);
+                    }
+
+                }
+        );
+
+    }
+}

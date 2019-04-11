@@ -1,0 +1,21 @@
+package com.en.adback.entity.calpolicy;
+
+import lombok.Data;
+
+@Data
+public class AllDevices {
+   private String  deviceId;
+   private String  cityId ;
+   private String ip;
+   private String appName;
+   private String url;
+
+    public AllDevices() {
+    }
+
+    public String getDeviceId() {
+        return deviceId;
+    }
+
+
+}

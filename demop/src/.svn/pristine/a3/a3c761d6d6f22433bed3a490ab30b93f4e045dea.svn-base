@@ -1,0 +1,257 @@
+package com.en.adback.serviceimp.analisys;
+
+import com.en.adback.mapper.analisys.PutinPointCountMapper;
+import com.en.adback.service.analisys.PutinPointCountSerivce;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+@Service
+public class PutinPointCountSerivceImp implements PutinPointCountSerivce {
+    @Autowired
+    private PutinPointCountMapper mapper;
+
+    @Override
+    public  List<Map<String,Object>> getPlacementPointStatistics(Map<String, Object> map) {
+        List<Map<String,Object>> PutinPointCount = mapper.PutinPointCount(map);
+
+        List<String> list1 = new ArrayList<String>();
+        for (Map<String,Object> map1: PutinPointCount) {
+            list1.add(map1.get("POLICYNAME").toString());
+        }
+        List<String> list2 = new ArrayList<String>();
+        list2.add("开屏提示");
+        list2.add("开屏正屏");
+        list2.add("定向投放正屏");
+        list2.add("定向投放A屏上");
+        list2.add("定向投放A屏下");
+        list2.add("定向投放B屏上");
+        list2.add("定向投放B屏下");
+        list2.add("定向轮播正屏");
+        list2.add("定向轮播A屏上");
+        list2.add("定向轮播A屏下");
+        list2.add("定向轮播B屏上");
+        list2.add("定向轮播B屏下");
+        list2.add("定向轮播三屏上");
+        list2.add("定向轮播三屏中");
+        list2.add("定向轮播三屏下");
+        list2.add("全屏正屏");
+        list2.add("全屏A屏上");
+        list2.add("全屏A屏下");
+        list2.add("全屏B屏上");
+        list2.add("全屏B屏下");
+        list2.add("全屏三屏上");
+        list2.add("全屏三屏中");
+        list2.add("全屏三屏下");
+        list2.add("插播正屏");
+        list2.add("插播A屏上");
+        list2.add("插播A屏下");
+        list2.add("插播B屏上");
+        list2.add("插播B屏下");
+        list2.add("插播三屏上");
+        list2.add("插播三屏中");
+        list2.add("插播三屏下");
+        for(int i=0;i<list2.size();i++){
+            if(!list1.contains(list2.get(i))){
+                Map<String,Object> NonExistent = new HashMap<String,Object>();
+                NonExistent.put("POLICYNAME",list2.get(i));
+                NonExistent.put("INMARCH",0);
+                NonExistent.put("OCTOBER",0);
+                NonExistent.put("DECEMBER",0);
+                NonExistent.put("INMAY",0);
+                NonExistent.put("SEPTEMBER",0);
+                NonExistent.put("NOVEMBER",0);
+                NonExistent.put("INJANUARY",0);
+                NonExistent.put("INFEBRUARY",0);
+                NonExistent.put("INJUNE",0);
+                NonExistent.put("AUGUST",0);
+                NonExistent.put("JULY",0);
+                NonExistent.put("APRIL",0);
+                PutinPointCount.add(NonExistent);
+            }
+        }
+
+        return PutinPointCount;
+    }
+
+    @Override
+    public List<Map<String, Object>> getPointStatistics(Map<String, Object> map) {
+        List<Map<String,Object>> list = mapper.getPointStatistics(map);
+        List<String> list1 = new ArrayList<String>();
+        for (Map<String,Object> map1: list) {
+            list1.add(map1.get("POLICYNAME").toString());
+        }
+        List<String> list2 = new ArrayList<String>();
+        list2.add("开屏提示");
+        list2.add("开屏正屏");
+        list2.add("定向投放正屏");
+        list2.add("定向投放A屏上");
+        list2.add("定向投放A屏下");
+        list2.add("定向投放B屏上");
+        list2.add("定向投放B屏下");
+        list2.add("定向轮播正屏");
+        list2.add("定向轮播A屏上");
+        list2.add("定向轮播A屏下");
+        list2.add("定向轮播B屏上");
+        list2.add("定向轮播B屏下");
+        list2.add("定向轮播三屏上");
+        list2.add("定向轮播三屏中");
+        list2.add("定向轮播三屏下");
+        list2.add("全屏正屏");
+        list2.add("全屏A屏上");
+        list2.add("全屏A屏下");
+        list2.add("全屏B屏上");
+        list2.add("全屏B屏下");
+        list2.add("全屏三屏上");
+        list2.add("全屏三屏中");
+        list2.add("全屏三屏下");
+        list2.add("插播正屏");
+        list2.add("插播A屏上");
+        list2.add("插播A屏下");
+        list2.add("插播B屏上");
+        list2.add("插播B屏下");
+        list2.add("插播三屏上");
+        list2.add("插播三屏中");
+        list2.add("插播三屏下");
+        for(int i=0;i<list2.size();i++){
+            if(!list1.contains(list2.get(i))){
+                Map<String,Object> NonExistent = new HashMap<String,Object>();
+                NonExistent.put("POLICYNAME",list2.get(i));
+                NonExistent.put("STRATEGYCOUNT",0);
+                list.add(NonExistent);
+            }
+        }
+        return list;
+    }
+
+
+    public List<Map<String,Object>> getOrientationOnTheArray(Map<String,Object> map){
+        List<Map<String,Object>> list = mapper.getOrientationOnTheArray(map);
+        List<String> list1 = new ArrayList<String>();
+        for (Map<String,Object> map1: list) {
+            list1.add(map1.get("POLICYNAME").toString());
+        }
+        List<String> list2 = new ArrayList<String>();
+        list2.add("定向投放正屏");
+        list2.add("定向投放A屏上");
+        list2.add("定向投放A屏下");
+        list2.add("定向投放B屏上");
+        list2.add("定向投放B屏下");
+        for(int i=0;i<list2.size();i++){
+            if(!list1.contains(list2.get(i))){
+                Map<String,Object> map1 = new HashMap<String,Object>();
+                map1.put("POLICYNAME",list2.get(i));
+                map1.put("STRATEGYCOUNT",0);
+                list.add(map1);
+            }
+        }
+        return list;
+    }
+
+
+
+    public List<Map<String,Object>> getTheTailArray(Map<String,Object> map){
+        List<Map<String,Object>> list = mapper.getTheTailArray(map);
+        List<String> list1 = new ArrayList<String>();
+        for (Map<String,Object> map1: list) {
+            list1.add(map1.get("POLICYNAME").toString());
+        }
+        List<String> list2 = new ArrayList<String>();
+        list2.add("开屏提示");
+        list2.add("开屏正屏");
+        for(int i=0;i<list2.size();i++){
+            if(!list1.contains(list2.get(i))){
+                Map<String,Object> map1 = new HashMap<String,Object>();
+                map1.put("POLICYNAME",list2.get(i));
+                map1.put("STRATEGYCOUNT",0);
+                list.add(map1);
+            }
+        }
+        return list;
+    }
+
+
+    public List<Map<String,Object>> getFullScreenArray(Map<String,Object> map){
+        List<Map<String,Object>> list = mapper.getFullScreenArray(map);
+        List<String> list1 = new ArrayList<String>();
+        for (Map<String,Object> map1: list) {
+            list1.add(map1.get("POLICYNAME").toString());
+        }
+        List<String> list2 = new ArrayList<String>();
+        list2.add("全屏正屏");
+        list2.add("全屏A屏上");
+        list2.add("全屏A屏下");
+        list2.add("全屏B屏上");
+        list2.add("全屏B屏下");
+        list2.add("全屏三屏上");
+        list2.add("全屏三屏中");
+        list2.add("全屏三屏下");
+        for(int i=0;i<list2.size();i++){
+            if(!list1.contains(list2.get(i))){
+                Map<String,Object> map1 = new HashMap<String,Object>();
+                map1.put("POLICYNAME",list2.get(i));
+                map1.put("STRATEGYCOUNT",0);
+                list.add(map1);
+            }
+        }
+        return list;
+    }
+
+
+    public List<Map<String,Object>> getCallWaitingArray(Map<String,Object> map){
+        List<Map<String,Object>> list = mapper.getCallWaitingArray(map);
+        List<String> list1 = new ArrayList<String>();
+        for (Map<String,Object> map1: list) {
+            list1.add(map1.get("POLICYNAME").toString());
+        }
+        List<String> list2 = new ArrayList<String>();
+        list2.add("插播正屏");
+        list2.add("插播A屏上");
+        list2.add("插播A屏下");
+        list2.add("插播B屏上");
+        list2.add("插播B屏下");
+        list2.add("插播三屏上");
+        list2.add("插播三屏中");
+        list2.add("插播三屏下");
+        for(int i=0;i<list2.size();i++){
+            if(!list1.contains(list2.get(i))){
+                Map<String,Object> map1 = new HashMap<String,Object>();
+                map1.put("POLICYNAME",list2.get(i));
+                map1.put("STRATEGYCOUNT",0);
+                list.add(map1);
+            }
+        }
+        return list;
+    }
+
+
+    public List<Map<String,Object>> getCirectedByArray(Map<String,Object> map){
+        List<Map<String,Object>> list = mapper.getCirectedByArray(map);
+        List<String> list1 = new ArrayList<String>();
+        for (Map<String,Object> map1: list) {
+            list1.add(map1.get("POLICYNAME").toString());
+        }
+        List<String> list2 = new ArrayList<String>();
+        list2.add("定向轮播正屏");
+        list2.add("定向轮播A屏上");
+        list2.add("定向轮播A屏下");
+        list2.add("定向轮播B屏上");
+        list2.add("定向轮播B屏下");
+        list2.add("定向轮播三屏上");
+        list2.add("定向轮播三屏中");
+        list2.add("定向轮播三屏下");
+        for(int i=0;i<list2.size();i++){
+            if(!list1.contains(list2.get(i))){
+                Map<String,Object> map1 = new HashMap<String,Object>();
+                map1.put("POLICYNAME",list2.get(i));
+                map1.put("STRATEGYCOUNT",0);
+                list.add(map1);
+            }
+        }
+        return list;
+    }
+}

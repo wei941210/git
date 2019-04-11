@@ -1,0 +1,73 @@
+package com.en.adback.mapper.analisys;
+
+import com.en.adback.entity.AdvertCount;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Select;
+
+import java.util.List;
+import java.util.Map;
+
+@Mapper
+public interface AdvertCountMapper {
+
+
+    @Select("<script><![CDATA[" +
+            "select ym.c_year as year,ym.c_month as month,case when cb.adcorpNums is null then 0 else cb.adcorpNums end as adcorpNums," +
+            "case when cb.blankNums is null then 0 else cb.blankNums end as blankNums from \n" +
+            "(\n" +
+            "select c_year,c_month from pub.t_year_month \n" +
+            "where to_number(c_year)=${year}\n" +
+            ") ym left join \n" +
+            "(\n" +
+            "select count( distinct adcorpid) as adcorpNums,count(distinct blankid) as blankNums,year(uploadTime) as year," +
+            "month(uploadTime) as month from ad.t_advert \n" +
+            "where year(uploadTime)=${year}\n" +
+            "group by year(uploadTime),month(uploadTime)\n" +
+            ") cb on to_number(ym.c_year)=cb.year and to_number(ym.c_month)=cb.month order by ym.c_year,c_month" +
+            "]]></script>")
+    public List<AdvertCount> getAdcorpAndBlankCount(Map<String, Object> map);
+
+
+    @Select("<script><![CDATA["+
+            "select t.tradeId tradeId,t.tradeName tradeName,case when tc.total is null then 0 else tc.total end as tradeNums from ad.t_trade t left join \n" +
+            "(\n" +
+            "select count(*) as total,tradeid from ad.t_advert where\n" +
+            " uploadTime<=to_date('${endTime} 08','yyyy-MM-dd hh') " +
+            " group by tradeid\n" +
+            ") tc on tc.tradeid=t.tradeid order by tradeNums desc" +
+            "]]></script>")
+    List<AdvertCount> getTradeCount(Map<String, Object> map);
+
+    @Select("<script><![CDATA[" +
+            "select b.blankId blankId,b.blankName blankName,case when bc.total is null then 0 else bc.total end as blankNums from ad.t_blank b left join \n" +
+            "(\n" +
+            "select count(*) as total,blankid from ad.t_advert where" +
+            " uploadTime<=to_date('${endTime} 08','yyyy-MM-dd hh') group by blankid \n" +
+            ") bc on bc.blankid=b.blankid order by blankNums desc" +
+            " ]]></script>")
+    List<AdvertCount> getBlankCount(Map<String, Object> map);
+
+    @Select("<script><![CDATA[" +
+            "select ym.c_year year,ym.c_month month,ps.screenpolicyId screenPolicyId,ps.policyName screenPolicyName,case when pc.total is null then 0 else pc.total end as screenPolicyNums from \n" +
+            "(\n" +
+            "select c_year,c_month from pub.t_year_month \n" +
+            "where to_number(c_year)=${year} order by c_year,c_month\n" +
+            ") ym left join \n" +
+            "(\n" +
+            "select screenpolicyId,policyName from ad.t_play_policy_screen\n" +
+            ") ps on 1=1\n" +
+            "left join \n" +
+            "(\n" +
+            "select pps.screenpolicyId,count(*) as total,year(ad.uploadTime) as ayear,month(ad.uploadTime) as amonth from ad.t_sub_advert_policys sbp" +
+            " inner join ad.t_advert ad on ad.advertid=sbp.advertId\n" +
+            "inner join ad.t_advert_policys ap on sbp.advertpolicysid=ap.advertPolicysId\n" +
+            "inner join ad.t_play_policy_screen pps on pps.screenpolicyId=ap.screenPolicyId " +
+            "where year(ad.uploadTime)=${year}" +
+            " group by pps.screenPolicyId,ayear,amonth\n" +
+            ") pc on pc.screenpolicyId=ps.screenpolicyId and pc.ayear=to_number(ym.c_year) and pc.amonth=to_number(ym.c_month)" +
+            "]]></script>")
+    List<AdvertCount> getPolicyCount(Map<String, Object> map);
+
+
+    List<AdvertCount> getQuxianCount(Map<String, Object> map);
+}

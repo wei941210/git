@@ -1,0 +1,66 @@
+package com.en.adback.serviceimp.analisys;
+
+import com.en.adback.entity.PlayLog;
+import com.en.adback.mapper.analisys.PlayLogMapper;
+import com.en.adback.service.analisys.PlayLogService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.*;
+import java.util.stream.Collectors;
+
+@Service
+public class PlayLogServiceImp implements PlayLogService {
+    @Autowired
+    private PlayLogMapper mapper;
+
+    @Override
+    public List<PlayLog> getPlayLlogList(Map<String, Object> map) throws ParseException {
+        List<PlayLog> list = mapper.getPlayLlogList(map);
+        List<PlayLog> list3 = new ArrayList<PlayLog>();
+        for(int i = 0;i<list.size()-1;i++){
+            String str = list.get(i).getPolicyName();
+           if(list.get(i).getScreenName().indexOf(str.substring(0,1)) != -1){
+               list3.add(list.get(i));
+           }
+        }
+        for(int i = 0;i<list3.size()-1;i++){
+            // 过滤 是否在指定时间段内（已时分秒为准）
+            SimpleDateFormat df = new SimpleDateFormat("HH-mm-ss");
+            String strDate = df.format(df.parse(list3.get(i).getPlayTime()));
+            Date now = df.parse(strDate); // 获取list中一条数据的时间
+            Date begin = df.parse(map.get("beginPlayTime").toString());// 开始时间
+            Date end = df.parse(map.get("endPlayTime").toString()); // 结束时间
+            Calendar nowTime = Calendar.getInstance();
+            nowTime.setTime(now);
+            Calendar beginTime = Calendar.getInstance();
+            beginTime.setTime(begin);
+            Calendar endTime = Calendar.getInstance();
+            endTime.setTime(end);
+            // 在指定时间段内为 true
+            if (nowTime.before(endTime) && nowTime.after(beginTime) && map.get("advertId").equals(list3.get(i).getAdvertId())) {
+                SimpleDateFormat df1 = new SimpleDateFormat("yyyy-MM-dd");
+                SimpleDateFormat df2 = new SimpleDateFormat("HH-mm-ss");
+                list3.get(i).setBroadcastDate(df1.format(df1.parse(list3.get(i).getPlayTime())));
+                list3.get(i).setAirTime(df2.format(df2.parse(list3.get(i).getPlayTime())));
+                if(list3.get(i).getScreen().contains("-")){
+                    list3.get(i).setDetail(list3.get(i).getScreenName());
+                    list3.get(i).setScreen(list3.get(i).getScreen().substring(list3.get(i).getScreen().indexOf("-")+1,list3.get(i).getScreen().length()-1));
+                }else{
+                    list3.get(i).setDetail(list3.get(i).getScreenName());
+                    list3.get(i).setScreen(list3.get(i).getScreen());
+                }
+                if(i > 0){
+                    list3.get(i).setFormerAdvertising(list3.get(i-1).getAdvertName());
+                }
+                if(i < list3.size()-1){
+                    list3.get(i).setAfterTheAdvertising(list3.get(i+1).getAdvertName());
+                }
+            }
+        }
+       List<PlayLog> filterList = list3.stream().filter(a -> a.getDetail()!=null && !"".equals(a.getDetail()) && map.get("advertId").equals(a.getAdvertId())).collect(Collectors.toList());
+        return filterList;
+    }
+}

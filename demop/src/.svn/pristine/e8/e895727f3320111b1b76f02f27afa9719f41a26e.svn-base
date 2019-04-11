@@ -1,0 +1,17 @@
+package com.en.adback.mapper;
+
+
+import com.en.adback.entity.Menu;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Select;
+
+import java.util.List;
+
+@Mapper
+public interface IMenuMapper {
+
+    // 获取所有有效菜单项
+    @Select("select menuId,menuName,pareMenuId,url,iused from ad.t_menu where iused=1 order by  menuid, paixu ")
+    public List<Menu> menuList();
+
+}

@@ -1,0 +1,11 @@
+package com.en.adback.service;
+
+
+
+import com.en.adback.entity.Menu;
+
+import java.util.List;
+
+public interface IMenuService {
+    public List<Menu> menuList();
+}

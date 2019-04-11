@@ -1,0 +1,21 @@
+package com.en.adback.serviceimp;
+
+
+import com.en.adback.entity.Menu;
+import com.en.adback.mapper.IMenuMapper;
+import com.en.adback.service.IMenuService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class MenuServiceImp implements IMenuService {
+    @Autowired
+    private IMenuMapper mapper;
+    @Override
+    public List<Menu> menuList() {
+        List<Menu> list=mapper.menuList();
+        return list;
+    }
+}

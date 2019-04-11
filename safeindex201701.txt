@@ -1,16 +1,21 @@
-版权声明：本文为博主原创文章，转载请附上博文链接！
+﻿版权声明：本文为博主原创文章，转载请附上博文链接！
 
-$ git push -u origin master
-To git@github.com:xxx/xxx.git
- ! [rejected]        master -> master (fetch first)
-error: failed to push some refs to 'git@github.com:xxx/xxx.git'
-hint: Updates were rejected because the remote contains work that you do
-hint: not have locally. This is usually caused by another repository pushing
-hint: to the same ref. You may want to first integrate the remote changes
-hint: (e.g., 'git pull ...') before pushing again.
-hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+    总结：其实只需要进行下面几步就能把本地项目上传到Github
+
+   
+  1、在本地创建一个版本库（即文件夹），通过git init把它变成Git仓库；
+
+  
+   2、把项目复制到这个文件夹里面，再通过git add .把项目添加到仓库；
+
+  
+   3、再通过git commit -m "注释内容"把项目提交到仓库；
+
+ 
+   4、在Github上设置好SSH密钥后，新建一个远程仓库，通过git remote add origin https://github.com/guyibang/TEST2.git将本地仓库和远程仓库进行关联；
+
+ 
+   5、最后通过git push -u origin master把本地仓库的项目推送到远程仓库（也就是Github）上；（若新建远程仓库的时候自动创建了README文件会报错，解决办法看上面）。
 --------------------- 
-作者：Vinx911 
-来源：CSDN 
-原文：https://blog.csdn.net/u011471873/article/details/51462871 
-版权声明：本文为博主原创文章，转载请附上博文链接！
+作者：gyb_fighting 
+
